@@ -1,7 +1,15 @@
 import pygame
-from constants import *
+from constants import (
+    LINE_WIDTH,
+    PLAYER_RADIUS,
+    PLAYER_SPEED,
+    PLAYER_SHOOT_COOLDOWN_SECONDS,
+    PLAYER_SHOOT_SPEED,
+    PLAYER_TURN_SPEED,
+)
 from circleshape import CircleShape
 from shot import Shot
+
 
 class Player(CircleShape):
     def __init__(self, x, y):
@@ -26,7 +34,7 @@ class Player(CircleShape):
     def update(self, dt):
         keys = pygame.key.get_pressed()
         self.shot_cooldown -= dt
-        
+
         if keys[pygame.K_a]:
             self.rotate(-dt)
         if keys[pygame.K_d]:
@@ -37,10 +45,12 @@ class Player(CircleShape):
             self.move(-dt)
         if keys[pygame.K_SPACE]:
             self.shoot()
-    
+
     def move(self, dt):
         unit_vector = pygame.Vector2(0, 1)
-        rotated_with_speed_vector = unit_vector.rotate(self.rotation) * PLAYER_SPEED * dt
+        rotated_with_speed_vector = (
+            unit_vector.rotate(self.rotation) * PLAYER_SPEED * dt
+        )
         self.position += rotated_with_speed_vector
 
     def shoot(self):
@@ -50,3 +60,24 @@ class Player(CircleShape):
         shot = Shot(self.position.x, self.position.y)
         shot.velocity = pygame.Vector2(0, 1).rotate(self.rotation) * PLAYER_SHOOT_SPEED
 
+    def _get_closest_point_on_segment(self, p, a, b):
+        ab = b - a
+        ap = p - a
+
+        t = ap.dot(ab) / ab.length_squared()
+
+        t = max(0, min(1, t))
+
+        return a + t * ab
+
+    def collides_with(self, other):
+        vertices = self.triangle()
+        for v1 in range(len(vertices)):
+            for v2 in range(v1 + 1, len(vertices)):
+                closest_point = self._get_closest_point_on_segment(
+                    other.position, vertices[v1], vertices[v2]
+                )
+
+                if closest_point.distance_to(other.position) <= other.radius:
+                    return True
+        return False
